@@ -141,3 +141,13 @@ def list_books():
     conn.close()
     return jsonify(data)
 
+@app.route('/books/available')
+def available_books():
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM books WHERE stock_available > 0")
+    data = cursor.fetchall()
+    conn.close()
+    return jsonify(data)
+
+
