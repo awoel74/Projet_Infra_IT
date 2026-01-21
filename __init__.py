@@ -272,3 +272,60 @@ def loan_many(book_id):
     conn.close()
 
     return f"{q} emprunt(s) effectué(s)"
+
+@app.route('/user')
+@user_auth_required
+def user_page():
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, title, author, stock_available FROM books ORDER BY id")
+    books = cursor.fetchall()
+    conn.close()
+
+    return render_template('user_books.html', books=books)
+
+@app.route('/user/loan', methods=['POST'])
+@user_auth_required
+def user_loan_post():
+    book_id = request.form.get('book_id', '').strip()
+    qty = request.form.get('qty', '1').strip()
+
+    try:
+        book_id = int(book_id)
+        qty = int(qty)
+        if qty <= 0:
+            return "Quantité invalide", 400
+    except ValueError:
+        return "Données invalides", 400
+
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT stock_available FROM books WHERE id = ?", (book_id,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return "Livre introuvable", 404
+
+    stock_available = row[0]
+    if stock_available < qty:
+        conn.close()
+        return f"Stock insuffisant (disponible: {stock_available})", 400
+
+    # user_id = 1 (simplifié pour le TP)
+    for _ in range(qty):
+        cursor.execute(
+            "INSERT INTO loans (user_id, book_id, loan_date) VALUES (?, ?, DATE('now'))",
+            (1, book_id)
+        )
+
+    cursor.execute(
+        "UPDATE books SET stock_available = stock_available - ? WHERE id = ?",
+        (qty, book_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect('/user')
