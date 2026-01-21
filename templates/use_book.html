@@ -1,0 +1,36 @@
+<h1>📚 Espace utilisateur – Emprunter des livres</h1>
+
+<p>Choisis un livre et la quantité à emprunter.</p>
+
+<table border="1" cellpadding="6">
+  <tr>
+    <th>ID</th>
+    <th>Titre</th>
+    <th>Auteur</th>
+    <th>Disponible</th>
+    <th>Emprunter</th>
+  </tr>
+
+  {% for b in books %}
+  <tr>
+    <td>{{ b[0] }}</td>
+    <td>{{ b[1] }}</td>
+    <td>{{ b[2] }}</td>
+    <td>{{ b[3] }}</td>
+    <td>
+      {% if b[3] > 0 %}
+      <form method="POST" action="/user/loan" style="margin:0;">
+        <input type="hidden" name="book_id" value="{{ b[0] }}">
+        <input type="number" name="qty" min="1" max="{{ b[3] }}" value="1" style="width:70px;">
+        <button type="submit">Emprunter</button>
+      </form>
+      {% else %}
+      <em>Indisponible</em>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+<br>
+<a href="/">⬅ Retour accueil</a>
