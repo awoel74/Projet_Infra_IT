@@ -211,25 +211,28 @@ def return_book(loan_id):
 
     return "Livre retourné thank you bro"
 
-@app.route('/admin/books/add', methods=['POST'])
+@app.route('/admin/books/add', methods=['GET', 'POST'])
 def admin_add_book():
     if not est_authentifie():
         return redirect(url_for('authentification'))
 
-    title = request.form['title']
-    author = request.form['author']
-    stock = int(request.form['stock'])
+    if request.method == 'POST':
+        title = request.form['title']
+        author = request.form['author']
+        stock = int(request.form['stock'])
 
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO books (title, author, stock_total, stock_available) VALUES (?, ?, ?, ?)",
-        (title, author, stock, stock)
-    )
-    conn.commit()
-    conn.close()
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO books (title, author, stock_total, stock_available) VALUES (?, ?, ?, ?)",
+            (title, author, stock, stock)
+        )
+        conn.commit()
+        conn.close()
 
-    return "Livre ajouté par l’administrateur"
+        return redirect('/admin/books')
+
+    return render_template('admin_add_book.html')
 
 
 @app.route('/admin/books/delete/<int:book_id>')
