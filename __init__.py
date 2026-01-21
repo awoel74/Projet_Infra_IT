@@ -1,26 +1,33 @@
-
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, Response
 from functools import wraps
 import sqlite3
 
 app = Flask(__name__)
-app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'  # Clé secrète pour les sessions
+app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 
 
 # =========================
-# AUTHENTIFICATION ADMIN
+# AUTH ADMIN (session)
 # =========================
-
 def est_authentifie():
     return session.get('authentifie')
 
 
-# =========================
-# AUTHENTIFICATION USER (Basic Auth)
-# login : user
-# password : 12345
-# =========================
+@app.route('/authentification', methods=['GET', 'POST'])
+def authentification():
+    if request.method == 'POST':
+        if request.form.get('username') == 'admin' and request.form.get('password') == 'password':
+            session['authentifie'] = True
+            return redirect(url_for('admin_dashboard'))
+        else:
+            return render_template('formulaire_authentification.html', error=True)
 
+    return render_template('formulaire_authentification.html', error=False)
+
+
+# =========================
+# AUTH USER (Basic Auth)
+# =========================
 def user_auth_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -35,104 +42,16 @@ def user_auth_required(f):
 
 
 # =========================
-# ROUTES EXISTANTES
+# HOME
 # =========================
-
 @app.route('/')
-def hello_world():
+def home():
     return render_template('hello.html')
 
 
-@app.route('/lecture')
-def lecture():
-    if not est_authentifie():
-        return redirect(url_for('authentification'))
-
-    return "<h2>Bravo, vous êtes authentifié</h2>"
-
-
-@app.route('/authentification', methods=['GET', 'POST'])
-def authentification():
-    if request.method == 'POST':
-        if request.form['username'] == 'admin' and request.form['password'] == 'password':
-            session['authentifie'] = True
-            return redirect(url_for('lecture'))
-        else:
-            return render_template('formulaire_authentification.html', error=True)
-
-    return render_template('formulaire_authentification.html', error=False)
-
-
-@app.route('/fiche_client/<int:post_id>')
-def Readfiche(post_id):
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM clients WHERE id = ?', (post_id,))
-    data = cursor.fetchall()
-    conn.close()
-    return render_template('read_data.html', data=data)
-
-
-@app.route('/consultation/')
-def ReadBDD():
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM clients;')
-    data = cursor.fetchall()
-    conn.close()
-    return render_template('read_data.html', data=data)
-
-
-@app.route('/enregistrer_client', methods=['GET'])
-def formulaire_client():
-    return render_template('formulaire.html')
-
-
-@app.route('/enregistrer_client', methods=['POST'])
-def enregistrer_client():
-    nom = request.form['nom']
-    prenom = request.form['prenom']
-
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute(
-        'INSERT INTO clients (created, nom, prenom, adresse) VALUES (?, ?, ?, ?)',
-        (1002938, nom, prenom, "ICI")
-    )
-    conn.commit()
-    conn.close()
-
-    return redirect('/consultation/')
-
-
-
-@app.route('/fiche_nom/')
-@user_auth_required
-def fiche_nom():
-    nom = request.args.get('nom', '').strip()
-
-    if nom == "":
-        return jsonify({
-            "error": "Paramètre 'nom' manquant. Exemple : /fiche_nom/?nom=Dupont"
-        }), 400
-
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT * FROM clients WHERE nom LIKE ?",
-        (f"%{nom}%",)
-    )
-    data = cursor.fetchall()
-    conn.close()
-
-    return render_template('read_data.html', data=data)
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
-
-
-
+# =========================
+# API BOOKS (public)
+# =========================
 @app.route('/books')
 def list_books():
     conn = sqlite3.connect('database.db')
@@ -153,6 +72,9 @@ def available_books():
     return jsonify(data)
 
 
+# =========================
+# USER FLOW (loan / return)
+# =========================
 @app.route('/loan/<int:book_id>')
 @user_auth_required
 def loan_book(book_id):
@@ -163,13 +85,14 @@ def loan_book(book_id):
     stock = cursor.fetchone()
 
     if not stock or stock[0] <= 0:
-        return "Livre indisponible sorry bto"
+        conn.close()
+        return "Livre indisponible", 400
 
+    # user_id = 1 (simple pour le TP)
     cursor.execute(
         "INSERT INTO loans (user_id, book_id, loan_date) VALUES (?, ?, DATE('now'))",
         (1, book_id)
     )
-
     cursor.execute(
         "UPDATE books SET stock_available = stock_available - 1 WHERE id = ?",
         (book_id,)
@@ -177,8 +100,7 @@ def loan_book(book_id):
 
     conn.commit()
     conn.close()
-
-    return "Livre emprunté thanks bro"
+    return "Livre emprunté"
 
 
 @app.route('/return/<int:loan_id>')
@@ -194,13 +116,13 @@ def return_book(loan_id):
     book = cursor.fetchone()
 
     if not book:
-        return "Emprunt invalide bro"
+        conn.close()
+        return "Emprunt invalide", 400
 
     cursor.execute(
         "UPDATE loans SET return_date = DATE('now') WHERE id = ?",
         (loan_id,)
     )
-
     cursor.execute(
         "UPDATE books SET stock_available = stock_available + 1 WHERE id = ?",
         (book[0],)
@@ -208,8 +130,32 @@ def return_book(loan_id):
 
     conn.commit()
     conn.close()
+    return "Livre retourné"
 
-    return "Livre retourné thank you bro"
+
+# =========================
+# ADMIN FLOW (dashboard + books)
+# =========================
+@app.route('/admin')
+def admin_dashboard():
+    if not est_authentifie():
+        return redirect(url_for('authentification'))
+    return render_template('admin_dashboard.html')
+
+
+@app.route('/admin/books')
+def admin_books():
+    if not est_authentifie():
+        return redirect(url_for('authentification'))
+
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM books")
+    books = cursor.fetchall()
+    conn.close()
+
+    return render_template('admin_books.html', books=books)
+
 
 @app.route('/admin/books/add', methods=['GET', 'POST'])
 def admin_add_book():
@@ -217,9 +163,19 @@ def admin_add_book():
         return redirect(url_for('authentification'))
 
     if request.method == 'POST':
-        title = request.form['title']
-        author = request.form['author']
-        stock = int(request.form['stock'])
+        title = request.form.get('title', '').strip()
+        author = request.form.get('author', '').strip()
+        stock_str = request.form.get('stock', '').strip()
+
+        if title == "" or author == "" or stock_str == "":
+            return "Champs manquants", 400
+
+        try:
+            stock = int(stock_str)
+            if stock <= 0:
+                return "Stock invalide", 400
+        except ValueError:
+            return "Stock invalide", 400
 
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
@@ -232,6 +188,7 @@ def admin_add_book():
 
         return redirect('/admin/books')
 
+    # GET
     return render_template('admin_add_book.html')
 
 
@@ -246,7 +203,7 @@ def admin_delete_book(book_id):
     conn.commit()
     conn.close()
 
-    return f"Livre {book_id} supprimé"
+    return redirect('/admin/books')
 
 
 @app.route('/admin/loans')
@@ -261,6 +218,7 @@ def admin_loans():
         FROM loans
         JOIN users ON loans.user_id = users.id
         JOIN books ON loans.book_id = books.id
+        ORDER BY loans.id DESC
     """)
     data = cursor.fetchall()
     conn.close()
@@ -268,10 +226,5 @@ def admin_loans():
     return jsonify(data)
 
 
-@app.route('/admin')
-def admin_dashboard():
-    if not est_authentifie():
-        return redirect(url_for('authentification'))
-
-    return render_template('admin_dashboard.html')
-
+if __name__ == "__main__":
+    app.run(debug=True)
