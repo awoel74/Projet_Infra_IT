@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, Response
 from functools import wraps
 import sqlite3
@@ -229,3 +230,17 @@ def admin_add_book():
     conn.close()
 
     return "Livre ajouté par l’administrateur"
+
+
+@app.route('/admin/books/delete/<int:book_id>')
+def admin_delete_book(book_id):
+    if not est_authentifie():
+        return redirect(url_for('authentification'))
+
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM books WHERE id = ?", (book_id,))
+    conn.commit()
+    conn.close()
+
+    return f"Livre {book_id} supprimé"
