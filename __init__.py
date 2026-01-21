@@ -244,3 +244,23 @@ def admin_delete_book(book_id):
     conn.close()
 
     return f"Livre {book_id} supprimé"
+
+
+@app.route('/admin/loans')
+def admin_loans():
+    if not est_authentifie():
+        return redirect(url_for('authentification'))
+
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT loans.id, users.username, books.title, loans.loan_date, loans.return_date
+        FROM loans
+        JOIN users ON loans.user_id = users.id
+        JOIN books ON loans.book_id = books.id
+    """)
+    data = cursor.fetchall()
+    conn.close()
+
+    return jsonify(data)
+
