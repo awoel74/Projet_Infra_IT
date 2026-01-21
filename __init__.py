@@ -162,7 +162,7 @@ def loan_book(book_id):
     stock = cursor.fetchone()
 
     if not stock or stock[0] <= 0:
-        return "Livre indisponible"
+        return "Livre indisponible sorry bto"
 
     cursor.execute(
         "INSERT INTO loans (user_id, book_id, loan_date) VALUES (?, ?, DATE('now'))",
@@ -177,6 +177,36 @@ def loan_book(book_id):
     conn.commit()
     conn.close()
 
-    return "Livre emprunté"
+    return "Livre emprunté thanks bro"
 
+
+@app.route('/return/<int:loan_id>')
+@user_auth_required
+def return_book(loan_id):
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT book_id FROM loans WHERE id = ? AND return_date IS NULL",
+        (loan_id,)
+    )
+    book = cursor.fetchone()
+
+    if not book:
+        return "Emprunt invalide bro"
+
+    cursor.execute(
+        "UPDATE loans SET return_date = DATE('now') WHERE id = ?",
+        (loan_id,)
+    )
+
+    cursor.execute(
+        "UPDATE books SET stock_available = stock_available + 1 WHERE id = ?",
+        (book[0],)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return "Livre retourné thank you bro"
 
