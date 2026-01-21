@@ -264,3 +264,11 @@ def admin_loans():
 
     return jsonify(data)
 
+
+@app.route('/admin')
+def admin_dashboard():
+    if not est_authentifie():
+        return redirect(url_for('authentification'))
+
+    return render_template('admin_dashboard.html')
+
