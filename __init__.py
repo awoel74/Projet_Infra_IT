@@ -129,3 +129,15 @@ def fiche_nom():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+
+@app.route('/books')
+def list_books():
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM books")
+    data = cursor.fetchall()
+    conn.close()
+    return jsonify(data)
+
