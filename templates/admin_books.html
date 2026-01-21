@@ -1,0 +1,28 @@
+<h2>📚 Livres de la bibliothèque</h2>
+
+<table border="1" cellpadding="5">
+  <tr>
+    <th>ID</th>
+    <th>Titre</th>
+    <th>Auteur</th>
+    <th>Stock total</th>
+    <th>Disponible</th>
+    <th>Action</th>
+  </tr>
+
+  {% for book in books %}
+  <tr>
+    <td>{{ book[0] }}</td>
+    <td>{{ book[1] }}</td>
+    <td>{{ book[2] }}</td>
+    <td>{{ book[3] }}</td>
+    <td>{{ book[4] }}</td>
+    <td>
+      <a href="/admin/books/delete/{{ book[0] }}">❌ Supprimer</a>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+<br>
+<a href="/admin">⬅ Retour dashboard</a>
