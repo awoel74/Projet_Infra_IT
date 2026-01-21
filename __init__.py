@@ -228,3 +228,47 @@ def admin_loans():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+@app.route('/loan_many/<int:book_id>')
+@user_auth_required
+def loan_many(book_id):
+    q = request.args.get('q', '1').strip()
+    try:
+        q = int(q)
+        if q <= 0:
+            return "Quantité invalide", 400
+    except ValueError:
+        return "Quantité invalide", 400
+
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT stock_available FROM books WHERE id = ?", (book_id,))
+    stock = cursor.fetchone()
+
+    if not stock:
+        conn.close()
+        return "Livre introuvable", 404
+
+    stock_available = stock[0]
+    if stock_available < q:
+        conn.close()
+        return f"Stock insuffisant (disponible: {stock_available})", 400
+
+    # user_id = 1 (simple TP)
+    for _ in range(q):
+        cursor.execute(
+            "INSERT INTO loans (user_id, book_id, loan_date) VALUES (?, ?, DATE('now'))",
+            (1, book_id)
+        )
+
+    cursor.execute(
+        "UPDATE books SET stock_available = stock_available - ? WHERE id = ?",
+        (q, book_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return f"{q} emprunt(s) effectué(s)"
