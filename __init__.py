@@ -141,6 +141,7 @@ def list_books():
     conn.close()
     return jsonify(data)
 
+
 @app.route('/books/available')
 def available_books():
     conn = sqlite3.connect('database.db')
@@ -149,5 +150,33 @@ def available_books():
     data = cursor.fetchall()
     conn.close()
     return jsonify(data)
+
+
+@app.route('/loan/<int:book_id>')
+@user_auth_required
+def loan_book(book_id):
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT stock_available FROM books WHERE id = ?", (book_id,))
+    stock = cursor.fetchone()
+
+    if not stock or stock[0] <= 0:
+        return "Livre indisponible"
+
+    cursor.execute(
+        "INSERT INTO loans (user_id, book_id, loan_date) VALUES (?, ?, DATE('now'))",
+        (1, book_id)
+    )
+
+    cursor.execute(
+        "UPDATE books SET stock_available = stock_available - 1 WHERE id = ?",
+        (book_id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return "Livre emprunté"
 
 
