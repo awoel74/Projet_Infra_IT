@@ -1,0 +1,36 @@
+<h1>📝 Gestionnaire de tâches</h1>
+
+<form method="POST" action="/tasks/add">
+  <input type="text" name="title" placeholder="Titre" required><br><br>
+  <textarea name="description" placeholder="Description"></textarea><br><br>
+  <input type="date" name="due_date"><br><br>
+  <button type="submit">Ajouter</button>
+</form>
+
+<hr>
+
+<table border="1" cellpadding="6">
+  <tr>
+    <th>Titre</th>
+    <th>Description</th>
+    <th>Échéance</th>
+    <th>Statut</th>
+    <th>Actions</th>
+  </tr>
+
+  {% for t in tasks %}
+  <tr>
+    <td>{% if t[4] == 1 %}<s>{{ t[1] }}</s>{% else %}{{ t[1] }}{% endif %}</td>
+    <td>{{ t[2] }}</td>
+    <td>{{ t[3] }}</td>
+    <td>{% if t[4] == 1 %}✅ Terminée{% else %}⏳ En cours{% endif %}</td>
+    <td>
+      <a href="/tasks/complete/{{ t[0] }}">✔ Terminer</a> |
+      <a href="/tasks/delete/{{ t[0] }}">❌ Supprimer</a>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+<br>
+<a href="/">⬅ Accueil</a>
