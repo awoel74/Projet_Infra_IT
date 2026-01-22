@@ -329,3 +329,50 @@ def user_loan_post():
     conn.close()
 
     return redirect('/user')
+
+
+TASKS_DB = "tasks.db"
+
+@app.route('/tasks')
+def tasks_list():
+    conn = sqlite3.connect(TASKS_DB)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM tasks ORDER BY id DESC")
+    tasks = cursor.fetchall()
+    conn.close()
+    return render_template('tasks.html', tasks=tasks)
+
+@app.route('/tasks/add', methods=['POST'])
+def tasks_add():
+    title = request.form['title']
+    description = request.form.get('description', '')
+    due_date = request.form.get('due_date', '')
+
+    conn = sqlite3.connect(TASKS_DB)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO tasks (title, description, due_date, completed) VALUES (?, ?, ?, 0)",
+        (title, description, due_date)
+    )
+    conn.commit()
+    conn.close()
+    return redirect('/tasks')
+
+@app.route('/tasks/delete/<int:task_id>')
+def tasks_delete(task_id):
+    conn = sqlite3.connect(TASKS_DB)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
+    return redirect('/tasks')
+
+@app.route('/tasks/complete/<int:task_id>')
+def tasks_complete(task_id):
+    conn = sqlite3.connect(TASKS_DB)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE tasks SET completed = 1 WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
+    return redirect('/tasks')
+
